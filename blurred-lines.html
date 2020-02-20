@@ -88,6 +88,7 @@
         }
     </style>
 
+    <label><span>Number of edges</span><input id="edgesRange" type="range" min=0 max=3 value=3><output></output></label>
     <label><span>Line width</span><input id="widthRange" type="range" min=0 max=100 value=100><output></output></label>
     <label><span>Half pixel correction method</span><input id="halfPixelRange" type="range" min=0 max=2
             value=2><output></output></label>
@@ -99,9 +100,10 @@
         var svg = document.querySelector('svg');
         var cell1 = document.querySelector('#cell1');
         var cell2 = document.querySelector('#cell2');
+        var edges;
         var multiplier;
         var halfPixelCorrection;
-        var shapeRendering; // works perfectly in Chrome
+        var shapeRendering;
 
         var dpr = window.devicePixelRatio;
         document.querySelector('#devicePixelRatio').innerHTML = dpr;
@@ -113,6 +115,12 @@
             }
         }, 250);
 
+
+        function processEdgesRange(elem) {
+            edges = parseInt(elem.value, 10) + 1;
+            render();
+            elem.nextElementSibling.innerHTML = edges;
+        }
 
         function processWidthRange(elem) {
             multiplier = parseInt(elem.value, 10) / 100;
@@ -152,16 +160,16 @@
             elem.nextElementSibling.innerHTML = shapeRendering;
         }
 
-        document.querySelector('#widthRange').addEventListener('input', function (ev) { processWidthRange(ev.target) });
-        document.querySelector('#halfPixelRange').addEventListener('input', function (ev) { processHalfPixelRange(ev.target) });
-        document.querySelector('#shapeRendering').addEventListener('input', function (ev) { processShapeRenderingRange(ev.target) });
-        document.querySelector('#widthRange').addEventListener('change', function (ev) { processWidthRange(ev.target) }); // IE9
-        document.querySelector('#halfPixelRange').addEventListener('change', function (ev) { processHalfPixelRange(ev.target) }); // IE9
-        document.querySelector('#shapeRendering').addEventListener('change', function (ev) { processShapeRenderingRange(ev.target) }); // IE9
+        function registerRange(elem, callb) {
+            elem.addEventListener('input', function (ev) { callb(ev.target) });
+            elem.addEventListener('change', function (ev) { callb(ev.target) }); // IE9
+            callb(elem);
+        }
 
-        processWidthRange(document.querySelector('#widthRange'));
-        processHalfPixelRange(document.querySelector('#halfPixelRange'));
-        processShapeRenderingRange(document.querySelector('#shapeRendering'));
+        registerRange(document.querySelector('#edgesRange'), processEdgesRange);
+        registerRange(document.querySelector('#widthRange'), processWidthRange);
+        registerRange(document.querySelector('#halfPixelRange'), processHalfPixelRange);
+        registerRange(document.querySelector('#shapeRendering'), processShapeRenderingRange);
 
         var width = 500;
         var height = 80;
@@ -184,15 +192,26 @@
             var x2 = x1 + rect.width - (width - 1);
             var y2 = y1 + rect.height - (width - 1);
 
-            let command = '';
+            var lines = [
+                [x1, y1, x2, y1],
+                [x2, y1, x2, y2],
+                [x2, y2, x1, y2],
+                [x1, y2, x1, y1],
+            ];
+
+            lines.splice(edges);
+
             if (halfPixelCorrection === 'handsontable') {
-                command = handsontableHalfPixelCorrection(x1, y1, x2, y2);
+                lines = handsontableHalfPixelCorrection(lines, width);
             }
             else if (halfPixelCorrection === 'simple') {
-                command = simpleHalfPixelCorrection(x1, y1, x2, y2);
+                lines = simpleHalfPixelCorrection(lines, width);
             }
-            else {
-                command = noHalfPixelCorrection(x1, y1, x2, y2);
+
+            var command = '';
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                command += 'M ' + line[0] + ' ' + line[1] + ' L ' + line[2] + ' ' + line[3] + ' ';
             }
 
             path.setAttribute('d', command);
@@ -207,51 +226,11 @@
         }
         render();
 
-        function handsontableHalfPixelCorrection(x1, y1, x2, y2) {
-            var command;
-            var lines = [
-                [x1, y1, x2, y1],
-                [x2, y1, x2, y2],
-                [x2, y2, x1, y2],
-                [x1, y2, x1, y1],
-            ];
-            lines = adjustLinesToViewBox(width, lines);
-            for (var i = 0; i < lines.length; i++) {
-                var line = lines[i];
-                if (i === 0) {
-                    command = 'M ' + line[0] + ' ' + line[1] + ' L ' + line[2] + ' ' + line[3];
-                }
-                else {
-                    command += 'M ' + line[0] + ' ' + line[1] + ' L ' + line[2] + ' ' + line[3];
-                }
-            }
-            return command;
-        }
+        function handsontableHalfPixelCorrection(lines, width) {
+            var newLines = new Array(lines.length);
+            var needSubPixelCorrection = (width % 2 !== 0); // disable antialiasing
 
-        function simpleHalfPixelCorrection(x1, y1, x2, y2) {
-            var crispAdjust = width % 2;
-            if (crispAdjust) {
-                x1 -= crispAdjust / 2;
-                y1 -= crispAdjust / 2;
-                x2 -= crispAdjust / 2;
-                y2 -= crispAdjust / 2;
-            }
-
-            var command = 'M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y1 + ' L ' + x2 + ' ' + y2 + ' L ' + x1 + ' ' + y2 + ' L ' + x1 + ' ' + y1;
-            return command;
-
-        }
-
-        function noHalfPixelCorrection(x1, y1, x2, y2) {
-            var command = 'M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y1 + ' L ' + x2 + ' ' + y2 + ' L ' + x1 + ' ' + y2 + ' L ' + x1 + ' ' + y1;
-            return command;
-        }
-
-        function adjustLinesToViewBox(strokeWidth, lines) {
-            const newLines = new Array(lines.length);
-            const needSubPixelCorrection = (strokeWidth % 2 !== 0); // disable antialiasing
-
-            for (let ii = 0; ii < lines.length; ii++) {
+            for (var ii = 0; ii < lines.length; ii++) {
                 var x1 = lines[ii][0];
                 var y1 = lines[ii][1];
                 var x2 = lines[ii][2];
@@ -267,6 +246,29 @@
                         x1 -= 0.5;
                         x2 -= 0.5;
                     }
+                }
+
+                newLines[ii] = [x1, y1, x2, y2];
+            }
+
+            return newLines;
+        }
+
+        function simpleHalfPixelCorrection(lines, width) {
+            var newLines = new Array(lines.length);
+            var needSubPixelCorrection = (width % 2 !== 0); // disable antialiasing
+
+            for (var ii = 0; ii < lines.length; ii++) {
+                var x1 = lines[ii][0];
+                var y1 = lines[ii][1];
+                var x2 = lines[ii][2];
+                var y2 = lines[ii][3];
+
+                if (needSubPixelCorrection) {
+                    x1 -= 0.5;
+                    x2 -= 0.5;
+                    y1 -= 0.5;
+                    y2 -= 0.5;
                 }
 
                 newLines[ii] = [x1, y1, x2, y2];
