@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Blurred lines</title>
+</head>
+
+<body>
+    <table>
+        <tr>
+            <td>A1</td>
+            <td>B1</td>
+            <td>C1</td>
+            <td>D1</td>
+        </tr>
+        <tr>
+            <td>A2</td>
+            <td id="cell1">B2</td>
+            <td>C2</td>
+            <td id="cell2">D2</td>
+        </tr>
+    </table>
+
+
+    <svg xmlns="http://www.w3.org/2000/svg">
+    </svg>
+
+    <style>
+        table {
+            border-spacing: 0;
+            margin: 0;
+            border-width: 0;
+            table-layout: fixed;
+            width: 0;
+        }
+
+        td {
+            border-style: solid;
+            border-color: #ccc;
+            border-top-width: 0;
+            border-left-width: 0;
+            border-right-width: 1px;
+            border-bottom-width: 1px;
+            height: 3ch;
+            width: 5ch;
+            empty-cells: show;
+            padding: 0 0.2ch 0 0.2ch;
+            background-color: #fff;
+        }
+
+        td:first-child {
+            border-left-width: 1px;
+        }
+
+        tr:first-child td {
+            border-top-width: 1px;
+        }
+
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        path {
+            fill: none;
+        }
+    </style>
+
+    <script>
+        var svg = document.querySelector('svg');
+        var cell1 = document.querySelector('#cell1');
+        var cell2 = document.querySelector('#cell2');
+
+        var width = 500;
+        var height = 500;
+        svg.style.width = width + 'px';
+        svg.style.height = height + 'px';
+        svg.setAttribute('width', width);
+        svg.setAttribute('height', height);
+        svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+
+        function drawPathAroundElement(elem, width) {
+            var rect = elem.getBoundingClientRect()
+            var path = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('stroke', 'blue');
+            path.setAttribute('stroke-width', width);
+            path.setAttribute('stroke-dasharray', 4);
+            path.setAttribute('shape-rendering', 'crispEdges'); // works perfectly in Chrome
+
+            console.log("rect", rect);
+
+            var x1 = rect.left;
+            var y1 = rect.top;
+            var x2 = x1 + rect.width;
+            var y2 = y1 + rect.height;
+
+            var crispAdjust = width % 2;
+
+            console.log('crispAdjust', crispAdjust);
+
+            if (crispAdjust) {
+                x1 -= crispAdjust / 2;
+                y1 -= crispAdjust / 2;
+                x2 -= crispAdjust / 2;
+                y2 -= crispAdjust / 2;
+            }
+
+            var command = 'M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y1 + ' L ' + x2 + ' ' + y2 + ' L ' + x1 + ' ' + y2 + ' L ' + x1 + ' ' + y1;
+            path.setAttribute('d', command);
+
+            svg.appendChild(path);
+        }
+
+        drawPathAroundElement(cell1, 1);
+        drawPathAroundElement(cell2, 2);
+    </script>
+</body>
+
+</html>
