@@ -26,9 +26,13 @@
     </svg>
 
     <style>
+        body {
+            font-family: sans-serif;
+        }
+
         table {
             border-spacing: 0;
-            margin: 0;
+            margin: 0 0 20px 0;
             border-width: 0;
             table-layout: fixed;
             width: 0;
@@ -65,15 +69,102 @@
         path {
             fill: none;
         }
+
+        label {
+            display: flex;
+            font-size: 11px;
+            align-items: center;
+            height: 30px;
+        }
+
+        label span {
+            display: block;
+            width: 140px;
+        }
+
+        label input {
+            display: block;
+            width: 100px;
+        }
     </style>
+
+    <label><span>Line width</span><input id="widthRange" type="range" min=0 max=100 value=100><output></output></label>
+    <label><span>Half pixel correction method</span><input id="halfPixelRange" type="range" min=0 max=2
+            value=2><output></output></label>
+    <label><span>Shape rendering</span><input id="shapeRendering" type="range" min=0 max=2
+            value=2><output></output></label>
+    <label><span>Device pixel ratio</span><output id="devicePixelRatio"></output></label>
 
     <script>
         var svg = document.querySelector('svg');
         var cell1 = document.querySelector('#cell1');
         var cell2 = document.querySelector('#cell2');
+        var multiplier;
+        var halfPixelCorrection;
+        var shapeRendering; // works perfectly in Chrome
+
+        var dpr = window.devicePixelRatio;
+        document.querySelector('#devicePixelRatio').innerHTML = dpr;
+
+        setInterval(function () {
+            if (dpr !== window.devicePixelRatio) {
+                dpr = window.devicePixelRatio;
+                document.querySelector('#devicePixelRatio').innerHTML = dpr;
+            }
+        }, 250);
+
+
+        function processWidthRange(elem) {
+            multiplier = parseInt(elem.value, 10) / 100;
+            render();
+            elem.nextElementSibling.innerHTML = multiplier;
+        }
+
+        function processHalfPixelRange(elem) {
+            switch (elem.value) {
+                case '2':
+                    halfPixelCorrection = 'handsontable' // one direction at a time
+                    break;
+                case '1':
+                    halfPixelCorrection = 'simple' // all directions
+                    break;
+                case '0':
+                    halfPixelCorrection = 'none'
+                    break;
+            }
+            render();
+            elem.nextElementSibling.innerHTML = halfPixelCorrection;
+        }
+
+        function processShapeRenderingRange(elem) {
+            switch (elem.value) {
+                case '2':
+                    shapeRendering = 'crispEdges' // one direction at a time
+                    break;
+                case '1':
+                    shapeRendering = 'geometricPrecision' // all directions
+                    break;
+                case '0':
+                    shapeRendering = 'auto'
+                    break;
+            }
+            render();
+            elem.nextElementSibling.innerHTML = shapeRendering;
+        }
+
+        document.querySelector('#widthRange').addEventListener('input', function (ev) { processWidthRange(ev.target) });
+        document.querySelector('#halfPixelRange').addEventListener('input', function (ev) { processHalfPixelRange(ev.target) });
+        document.querySelector('#shapeRendering').addEventListener('input', function (ev) { processShapeRenderingRange(ev.target) });
+        document.querySelector('#widthRange').addEventListener('change', function (ev) { processWidthRange(ev.target) }); // IE9
+        document.querySelector('#halfPixelRange').addEventListener('change', function (ev) { processHalfPixelRange(ev.target) }); // IE9
+        document.querySelector('#shapeRendering').addEventListener('change', function (ev) { processShapeRenderingRange(ev.target) }); // IE9
+
+        processWidthRange(document.querySelector('#widthRange'));
+        processHalfPixelRange(document.querySelector('#halfPixelRange'));
+        processShapeRenderingRange(document.querySelector('#shapeRendering'));
 
         var width = 500;
-        var height = 500;
+        var height = 80;
         svg.style.width = width + 'px';
         svg.style.height = height + 'px';
         svg.setAttribute('width', width);
@@ -84,21 +175,61 @@
             var rect = elem.getBoundingClientRect()
             var path = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('stroke', 'blue');
-            path.setAttribute('stroke-width', width);
+            path.setAttribute('stroke-width', width * multiplier);
             path.setAttribute('stroke-dasharray', 4);
-            path.setAttribute('shape-rendering', 'crispEdges'); // works perfectly in Chrome
-
-            console.log("rect", rect);
+            path.setAttribute('shape-rendering', shapeRendering);
 
             var x1 = rect.left;
             var y1 = rect.top;
-            var x2 = x1 + rect.width;
-            var y2 = y1 + rect.height;
+            var x2 = x1 + rect.width - (width - 1);
+            var y2 = y1 + rect.height - (width - 1);
 
+            let command = '';
+            if (halfPixelCorrection === 'handsontable') {
+                command = handsontableHalfPixelCorrection(x1, y1, x2, y2);
+            }
+            else if (halfPixelCorrection === 'simple') {
+                command = simpleHalfPixelCorrection(x1, y1, x2, y2);
+            }
+            else {
+                command = noHalfPixelCorrection(x1, y1, x2, y2);
+            }
+
+            path.setAttribute('d', command);
+
+            svg.appendChild(path);
+        }
+
+        function render() {
+            empty(this.svg);
+            drawPathAroundElement(cell1, 1);
+            drawPathAroundElement(cell2, 2);
+        }
+        render();
+
+        function handsontableHalfPixelCorrection(x1, y1, x2, y2) {
+            var command;
+            var lines = [
+                [x1, y1, x2, y1],
+                [x2, y1, x2, y2],
+                [x2, y2, x1, y2],
+                [x1, y2, x1, y1],
+            ];
+            lines = adjustLinesToViewBox(width, lines);
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                if (i === 0) {
+                    command = 'M ' + line[0] + ' ' + line[1] + ' L ' + line[2] + ' ' + line[3];
+                }
+                else {
+                    command += 'M ' + line[0] + ' ' + line[1] + ' L ' + line[2] + ' ' + line[3];
+                }
+            }
+            return command;
+        }
+
+        function simpleHalfPixelCorrection(x1, y1, x2, y2) {
             var crispAdjust = width % 2;
-
-            console.log('crispAdjust', crispAdjust);
-
             if (crispAdjust) {
                 x1 -= crispAdjust / 2;
                 y1 -= crispAdjust / 2;
@@ -107,13 +238,49 @@
             }
 
             var command = 'M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y1 + ' L ' + x2 + ' ' + y2 + ' L ' + x1 + ' ' + y2 + ' L ' + x1 + ' ' + y1;
-            path.setAttribute('d', command);
+            return command;
 
-            svg.appendChild(path);
         }
 
-        drawPathAroundElement(cell1, 1);
-        drawPathAroundElement(cell2, 2);
+        function noHalfPixelCorrection(x1, y1, x2, y2) {
+            var command = 'M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y1 + ' L ' + x2 + ' ' + y2 + ' L ' + x1 + ' ' + y2 + ' L ' + x1 + ' ' + y1;
+            return command;
+        }
+
+        function adjustLinesToViewBox(strokeWidth, lines) {
+            const newLines = new Array(lines.length);
+            const needSubPixelCorrection = (strokeWidth % 2 !== 0); // disable antialiasing
+
+            for (let ii = 0; ii < lines.length; ii++) {
+                var x1 = lines[ii][0];
+                var y1 = lines[ii][1];
+                var x2 = lines[ii][2];
+                var y2 = lines[ii][3];
+
+                if (needSubPixelCorrection) {
+                    var isHorizontal = y1 === y2;
+
+                    if (isHorizontal) {
+                        y1 -= 0.5;
+                        y2 -= 0.5;
+                    } else {
+                        x1 -= 0.5;
+                        x2 -= 0.5;
+                    }
+                }
+
+                newLines[ii] = [x1, y1, x2, y2];
+            }
+
+            return newLines;
+        }
+
+        function empty(element) {
+            var child;
+            while (child = element.lastChild) {
+                element.removeChild(child);
+            }
+        }
     </script>
 </body>
 
