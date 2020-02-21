@@ -105,8 +105,6 @@
 
     <label><span>Number of edges</span><input id="edgesRange" type="range" min=0 max=3 value=3><output></output></label>
     <label><span>Line width</span><input id="widthRange" type="range" min=0 max=100 value=100><output></output></label>
-    <label><span>Half pixel correction method</span><input id="halfPixelRange" type="range" min=0 max=2
-            value=2><output></output></label>
     <label><span>Device pixel ratio</span><output id="devicePixelRatio"></output></label>
     <div id="controls"></div>
 
@@ -151,6 +149,11 @@
             controls.appendChild(label);
         }
 
+        var halfPixelCorrectionOptions = ['none', 'simple', 'handsontable'];
+        addControl('halfPixelCorrection', "Half pixel correction", halfPixelCorrectionOptions.length, (index) => {
+            return halfPixelCorrectionOptions[index];
+        });
+
         var shapeRenderingOptions = ['auto', 'geometricPrecision', 'crispEdges'];
         addControl('shapeRendering', "Shape rendering", shapeRenderingOptions.length, (index) => {
             return shapeRenderingOptions[index];
@@ -167,12 +170,14 @@
         });
 
         var presetDefault = {
+            halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
             shapeRendering: shapeRenderingOptions.indexOf('crispEdges'),
             lineChaining: lineChainingOptions.indexOf('no'),
             pixelGridAlignment: pixelGridAlignmentOptions.indexOf('yes')
         }
 
         var presetHandsontable = {
+            halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
             shapeRendering: shapeRenderingOptions.indexOf('geometricPrecision'),
             lineChaining: lineChainingOptions.indexOf('yes'),
             pixelGridAlignment: pixelGridAlignmentOptions.indexOf('no')
@@ -192,7 +197,6 @@
 
         var edges;
         var multiplier;
-        var halfPixelCorrection;
 
         var dpr = window.devicePixelRatio;
         document.querySelector('#devicePixelRatio').innerHTML = dpr;
@@ -217,22 +221,6 @@
             elem.nextElementSibling.innerHTML = multiplier;
         }
 
-        function processHalfPixelRange(elem) {
-            switch (elem.value) {
-                case '2':
-                    halfPixelCorrection = 'handsontable' // one direction at a time
-                    break;
-                case '1':
-                    halfPixelCorrection = 'simple' // all directions
-                    break;
-                case '0':
-                    halfPixelCorrection = 'none'
-                    break;
-            }
-            render();
-            elem.nextElementSibling.innerHTML = halfPixelCorrection;
-        }
-
         function registerRange(elem, callb) {
             elem.addEventListener('input', function (ev) { callb(ev.target) });
             elem.addEventListener('change', function (ev) { callb(ev.target) }); // IE9
@@ -241,7 +229,6 @@
 
         registerRange(document.querySelector('#edgesRange'), processEdgesRange);
         registerRange(document.querySelector('#widthRange'), processWidthRange);
-        registerRange(document.querySelector('#halfPixelRange'), processHalfPixelRange);
 
         var width = 500;
         var height = 80;
@@ -277,13 +264,10 @@
                 lines = alignToPixelGrid(lines);
             }
 
-            if (halfPixelCorrection === 'pixelgrid') {
-                lines = pixelgridHalfPixelCorrection(lines, width);
-            }
-            else if (halfPixelCorrection === 'handsontable') {
+            if (state.halfPixelCorrection === 'handsontable') {
                 lines = handsontableHalfPixelCorrection(lines, width);
             }
-            else if (halfPixelCorrection === 'simple') {
+            else if (state.halfPixelCorrection === 'simple') {
                 lines = simpleHalfPixelCorrection(lines, width);
             }
 
@@ -396,7 +380,6 @@
         document.querySelector('#reset-preset').addEventListener('click', function () {
             document.querySelector('#edgesRange').setAttribute('value', '3');
             document.querySelector('#widthRange').setAttribute('value', '100');
-            document.querySelector('#halfPixelRange').setAttribute('value', '2');
             applyInputChanges();
             applyPreset(presetDefault);
         });
@@ -404,7 +387,6 @@
         document.querySelector('#handsontable-preset').addEventListener('click', function () {
             document.querySelector('#edgesRange').setAttribute('value', '3');
             document.querySelector('#widthRange').setAttribute('value', '100');
-            document.querySelector('#halfPixelRange').setAttribute('value', '2');
             applyInputChanges();
             applyPreset(presetHandsontable);
         });
@@ -412,7 +394,6 @@
         function applyInputChanges() {
             applyInputChange(document.querySelector('#edgesRange'));
             applyInputChange(document.querySelector('#widthRange'));
-            applyInputChange(document.querySelector('#halfPixelRange'));
         };
 
         function applyInputChange(elem) {
