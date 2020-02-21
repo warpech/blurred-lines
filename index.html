@@ -155,7 +155,7 @@
             return (index + 1) / 100;
         });
 
-        var halfPixelCorrectionOptions = ['none', 'simple', 'handsontable'];
+        var halfPixelCorrectionOptions = ['none', 'simple', 'handsontable', 'widthAware'];
         addControl('halfPixelCorrection', "Half pixel correction", halfPixelCorrectionOptions.length, (index) => {
             return halfPixelCorrectionOptions[index];
         });
@@ -182,6 +182,7 @@
             if (dpr !== window.devicePixelRatio) {
                 dpr = window.devicePixelRatio;
                 document.querySelector('#devicePixelRatio').innerHTML = dpr;
+                render();
             }
         }, 250);
 
@@ -197,20 +198,21 @@
             var pixelGridAligmnentWidthMultiplier = 1;
 
             if (state.pixelGridAlignment === 'yes') {
-                pixelGridAligmnentWidthMultiplier = normalizeByDevicePixelRatio(pixelGridAligmnentWidthMultiplier);
+                pixelGridAligmnentWidthMultiplier = normalizeLineByDevicePixelRatio(pixelGridAligmnentWidthMultiplier);
             }
 
+            var correctedWidth = width * state.lineWidthMultiplier * pixelGridAligmnentWidthMultiplier;
             var rect = elem.getBoundingClientRect()
             var path = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('stroke', 'blue');
-            path.setAttribute('stroke-width', width * state.lineWidthMultiplier * pixelGridAligmnentWidthMultiplier);
+            path.setAttribute('stroke-width', correctedWidth);
             path.setAttribute('stroke-dasharray', 4);
             path.setAttribute('shape-rendering', state.shapeRendering);
 
             var x1 = rect.left;
             var y1 = rect.top;
-            var x2 = x1 + rect.width - (width - 1);
-            var y2 = y1 + rect.height - (width - 1);
+            var x2 = x1 + rect.width - (correctedWidth - pixelGridAligmnentWidthMultiplier);
+            var y2 = y1 + rect.height - (correctedWidth - pixelGridAligmnentWidthMultiplier);
 
             var lines = [
                 [x1, y1, x2, y1],
@@ -225,11 +227,14 @@
                 lines = alignToPixelGrid(lines);
             }
 
-            if (state.halfPixelCorrection === 'handsontable') {
-                lines = handsontableHalfPixelCorrection(lines, width);
+            if (state.halfPixelCorrection === 'widthAware') {
+                lines = widthAwareHalfPixelCorrection(lines, width, correctedWidth);
+            }
+            else if (state.halfPixelCorrection === 'handsontable') {
+                lines = handsontableHalfPixelCorrection(lines, correctedWidth);
             }
             else if (state.halfPixelCorrection === 'simple') {
-                lines = simpleHalfPixelCorrection(lines, width);
+                lines = simpleHalfPixelCorrection(lines, correctedWidth);
             }
 
             var command = '';
@@ -265,18 +270,52 @@
             drawPathAroundElement(cell2, 2);
         }
 
-        function normalizeByDevicePixelRatio(num) {
+        function normalizePositionByDevicePixelRatio(num) {
             return Math.round(num * devicePixelRatio) / devicePixelRatio;
+        }
+
+        function normalizeLineByDevicePixelRatio(num) {
+            return Math.floor(num * devicePixelRatio) / devicePixelRatio;
         }
 
         function alignToPixelGrid(lines) {
             var newLines = new Array(lines.length);
 
             for (var ii = 0; ii < lines.length; ii++) {
-                var x1 = normalizeByDevicePixelRatio(lines[ii][0]);
-                var y1 = normalizeByDevicePixelRatio(lines[ii][1]);
-                var x2 = normalizeByDevicePixelRatio(lines[ii][2]);
-                var y2 = normalizeByDevicePixelRatio(lines[ii][3]);
+                var x1 = normalizePositionByDevicePixelRatio(lines[ii][0]);
+                var y1 = normalizePositionByDevicePixelRatio(lines[ii][1]);
+                var x2 = normalizePositionByDevicePixelRatio(lines[ii][2]);
+                var y2 = normalizePositionByDevicePixelRatio(lines[ii][3]);
+
+                newLines[ii] = [x1, y1, x2, y2];
+            }
+
+            return newLines;
+        }
+
+        function widthAwareHalfPixelCorrection(lines, width, renderedWidth) {
+            var newLines = new Array(lines.length);
+            var halfPixel = (renderedWidth % 2) / 2;
+            console.log('halfPixel', width, width % 2, renderedWidth, halfPixel);
+            var needSubPixelCorrection = (width % 2 !== 0); // disable antialiasing
+
+            for (var ii = 0; ii < lines.length; ii++) {
+                var x1 = lines[ii][0];
+                var y1 = lines[ii][1];
+                var x2 = lines[ii][2];
+                var y2 = lines[ii][3];
+
+                if (needSubPixelCorrection) {
+                    var isHorizontal = y1 === y2;
+
+                    if (isHorizontal) {
+                        y1 -= halfPixel;
+                        y2 -= halfPixel;
+                    } else {
+                        x1 -= halfPixel;
+                        x2 -= halfPixel;
+                    }
+                }
 
                 newLines[ii] = [x1, y1, x2, y2];
             }
@@ -349,7 +388,7 @@
         var presetDefault = {
             edgesCount: '4',
             lineWidthMultiplier: '100',
-            halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
+            halfPixelCorrection: halfPixelCorrectionOptions.indexOf('widthAware'),
             shapeRendering: shapeRenderingOptions.indexOf('geometricPrecision'),
             lineChaining: lineChainingOptions.indexOf('yes'),
             pixelGridAlignment: pixelGridAlignmentOptions.indexOf('yes')
