@@ -240,7 +240,12 @@
                         command = 'M ' + line[0] + ' ' + line[1] + ' L ' + line[2] + ' ' + line[3] + ' ';
                     }
                     else {
-                        command += 'L ' + line[2] + ' ' + line[3] + ' ';
+                        if (lines[i - 1][2] === line[0] && lines[i - 1][3] === line[1]) {
+                            command += 'L ' + line[2] + ' ' + line[3] + ' ';
+                        }
+                        else {
+                            command += 'M ' + line[0] + ' ' + line[1] + ' L ' + line[2] + ' ' + line[3] + ' ';
+                        }
                     }
                 }
                 else {
