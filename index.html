@@ -109,7 +109,6 @@
             value=2><output></output></label>
     <label><span>Shape rendering</span><input id="shapeRendering" type="range" min=0 max=2
             value=2><output></output></label>
-    <label><span>Line chaining</span><input id="lineChaining" type="range" min=0 max=1 value=0><output></output></label>
     <label><span>Device pixel ratio</span><output id="devicePixelRatio"></output></label>
     <div id="controls"></div>
 
@@ -127,7 +126,6 @@
 
         function updateState(elem, name, callb, output) {
             var index = parseInt(elem.value, 10);
-            console.log('index', index, callb(index));
             state[name] = callb(index);
             output.innerHTML = state[name];
             render();
@@ -155,16 +153,23 @@
             controls.appendChild(label);
         }
 
+        var lineChainingOptions = ['no', 'yes'];
+        addControl('lineChaining', "Line chaining", 2, (index) => {
+            return lineChainingOptions[index];
+        });
+
         var pixelGridAlignmentOptions = ['no', 'yes'];
         addControl('pixelGridAlignment', "Align to pixel grid", 2, (index) => {
             return pixelGridAlignmentOptions[index];
         });
 
         var presetDefault = {
+            lineChaining: lineChainingOptions.indexOf('no'),
             pixelGridAlignment: pixelGridAlignmentOptions.indexOf('yes')
         }
 
         var presetHandsontable = {
+            lineChaining: lineChainingOptions.indexOf('yes'),
             pixelGridAlignment: pixelGridAlignmentOptions.indexOf('no')
         }
 
@@ -184,7 +189,6 @@
         var multiplier;
         var halfPixelCorrection;
         var shapeRendering;
-        var lineChaining;
 
         var dpr = window.devicePixelRatio;
         document.querySelector('#devicePixelRatio').innerHTML = dpr;
@@ -241,32 +245,6 @@
             elem.nextElementSibling.innerHTML = shapeRendering;
         }
 
-        function processLineChainingRange(elem) {
-            switch (elem.value) {
-                case '1':
-                    lineChaining = true;
-                    break;
-                case '0':
-                    lineChaining = false;
-                    break;
-            }
-            render();
-            elem.nextElementSibling.innerHTML = lineChaining;
-        }
-
-        function processAlignPixelGrid(elem) {
-            switch (elem.value) {
-                case '1':
-                    alignPixelGrid = true;
-                    break;
-                case '0':
-                    alignPixelGrid = false;
-                    break;
-            }
-            render();
-            elem.nextElementSibling.innerHTML = alignPixelGrid;
-        }
-
         function registerRange(elem, callb) {
             elem.addEventListener('input', function (ev) { callb(ev.target) });
             elem.addEventListener('change', function (ev) { callb(ev.target) }); // IE9
@@ -277,7 +255,6 @@
         registerRange(document.querySelector('#widthRange'), processWidthRange);
         registerRange(document.querySelector('#halfPixelRange'), processHalfPixelRange);
         registerRange(document.querySelector('#shapeRendering'), processShapeRenderingRange);
-        registerRange(document.querySelector('#lineChaining'), processLineChainingRange);
 
         var width = 500;
         var height = 80;
@@ -326,7 +303,7 @@
             var command = '';
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i];
-                if (lineChaining) {
+                if (state.lineChaining === 'yes') {
                     if (i === 0) {
                         command = 'M ' + line[0] + ' ' + line[1] + ' L ' + line[2] + ' ' + line[3] + ' ';
                     }
@@ -434,7 +411,6 @@
             document.querySelector('#widthRange').setAttribute('value', '100');
             document.querySelector('#halfPixelRange').setAttribute('value', '2');
             document.querySelector('#shapeRendering').setAttribute('value', '2');
-            document.querySelector('#lineChaining').setAttribute('value', '0');
             applyInputChanges();
             applyPreset(presetDefault);
         });
@@ -444,7 +420,6 @@
             document.querySelector('#widthRange').setAttribute('value', '100');
             document.querySelector('#halfPixelRange').setAttribute('value', '2');
             document.querySelector('#shapeRendering').setAttribute('value', '1');
-            document.querySelector('#lineChaining').setAttribute('value', '1');
             applyInputChanges();
             applyPreset(presetHandsontable);
         });
@@ -454,7 +429,6 @@
             applyInputChange(document.querySelector('#widthRange'));
             applyInputChange(document.querySelector('#halfPixelRange'));
             applyInputChange(document.querySelector('#shapeRendering'));
-            applyInputChange(document.querySelector('#lineChaining'));
         };
 
         function applyInputChange(elem) {
