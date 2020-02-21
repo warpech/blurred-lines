@@ -104,7 +104,6 @@
     </style>
 
     <label><span>Number of edges</span><input id="edgesRange" type="range" min=0 max=3 value=3><output></output></label>
-    <label><span>Line width</span><input id="widthRange" type="range" min=0 max=100 value=100><output></output></label>
     <label><span>Device pixel ratio</span><output id="devicePixelRatio"></output></label>
     <div id="controls"></div>
 
@@ -149,6 +148,10 @@
             controls.appendChild(label);
         }
 
+        addControl('lineWidthMultiplier', "Line width multiplier", 100, (index) => {
+            return (index + 1) / 100;
+        });
+
         var halfPixelCorrectionOptions = ['none', 'simple', 'handsontable'];
         addControl('halfPixelCorrection', "Half pixel correction", halfPixelCorrectionOptions.length, (index) => {
             return halfPixelCorrectionOptions[index];
@@ -170,6 +173,7 @@
         });
 
         var presetDefault = {
+            lineWidthMultiplier: '100',
             halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
             shapeRendering: shapeRenderingOptions.indexOf('crispEdges'),
             lineChaining: lineChainingOptions.indexOf('no'),
@@ -177,6 +181,7 @@
         }
 
         var presetHandsontable = {
+            lineWidthMultiplier: '100',
             halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
             shapeRendering: shapeRenderingOptions.indexOf('geometricPrecision'),
             lineChaining: lineChainingOptions.indexOf('yes'),
@@ -196,7 +201,6 @@
         applyPreset(presetDefault);
 
         var edges;
-        var multiplier;
 
         var dpr = window.devicePixelRatio;
         document.querySelector('#devicePixelRatio').innerHTML = dpr;
@@ -215,12 +219,6 @@
             elem.nextElementSibling.innerHTML = edges;
         }
 
-        function processWidthRange(elem) {
-            multiplier = parseInt(elem.value, 10) / 100;
-            render();
-            elem.nextElementSibling.innerHTML = multiplier;
-        }
-
         function registerRange(elem, callb) {
             elem.addEventListener('input', function (ev) { callb(ev.target) });
             elem.addEventListener('change', function (ev) { callb(ev.target) }); // IE9
@@ -228,7 +226,6 @@
         }
 
         registerRange(document.querySelector('#edgesRange'), processEdgesRange);
-        registerRange(document.querySelector('#widthRange'), processWidthRange);
 
         var width = 500;
         var height = 80;
@@ -242,7 +239,7 @@
             var rect = elem.getBoundingClientRect()
             var path = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('stroke', 'blue');
-            path.setAttribute('stroke-width', width * multiplier);
+            path.setAttribute('stroke-width', width * state.lineWidthMultiplier);
             path.setAttribute('stroke-dasharray', 4);
             path.setAttribute('shape-rendering', state.shapeRendering);
 
@@ -379,21 +376,18 @@
 
         document.querySelector('#reset-preset').addEventListener('click', function () {
             document.querySelector('#edgesRange').setAttribute('value', '3');
-            document.querySelector('#widthRange').setAttribute('value', '100');
             applyInputChanges();
             applyPreset(presetDefault);
         });
 
         document.querySelector('#handsontable-preset').addEventListener('click', function () {
             document.querySelector('#edgesRange').setAttribute('value', '3');
-            document.querySelector('#widthRange').setAttribute('value', '100');
             applyInputChanges();
             applyPreset(presetHandsontable);
         });
 
         function applyInputChanges() {
             applyInputChange(document.querySelector('#edgesRange'));
-            applyInputChange(document.querySelector('#widthRange'));
         };
 
         function applyInputChange(elem) {
