@@ -175,36 +175,6 @@
             return pixelGridAlignmentOptions[index];
         });
 
-        var presetDefault = {
-            edgesCount: '4',
-            lineWidthMultiplier: '100',
-            halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
-            shapeRendering: shapeRenderingOptions.indexOf('crispEdges'),
-            lineChaining: lineChainingOptions.indexOf('no'),
-            pixelGridAlignment: pixelGridAlignmentOptions.indexOf('yes')
-        }
-
-        var presetHandsontable = {
-            edgesCount: '4',
-            lineWidthMultiplier: '100',
-            halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
-            shapeRendering: shapeRenderingOptions.indexOf('geometricPrecision'),
-            lineChaining: lineChainingOptions.indexOf('yes'),
-            pixelGridAlignment: pixelGridAlignmentOptions.indexOf('no')
-        }
-
-        function applyPreset(preset) {
-            var keys = Object.keys(preset);
-            for (var i = 0; i < keys.length; i++) {
-                var key = keys[i];
-                var elem = document.getElementById(key);
-                elem.value = preset[key];
-                elem.dispatchEvent(new Event("change"));
-            }
-        }
-
-        applyPreset(presetDefault);
-
         var dpr = window.devicePixelRatio;
         document.querySelector('#devicePixelRatio').innerHTML = dpr;
 
@@ -289,7 +259,6 @@
             drawPathAroundElement(cell1, 1);
             drawPathAroundElement(cell2, 2);
         }
-        render();
 
         function normalizeByDevicePixelRatio(num) {
             return Math.round(num * devicePixelRatio) / devicePixelRatio;
@@ -368,6 +337,38 @@
             }
         }
 
+        /**
+         Presets
+         */
+
+        var presetDefault = {
+            edgesCount: '4',
+            lineWidthMultiplier: '100',
+            halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
+            shapeRendering: shapeRenderingOptions.indexOf('crispEdges'),
+            lineChaining: lineChainingOptions.indexOf('no'),
+            pixelGridAlignment: pixelGridAlignmentOptions.indexOf('yes')
+        }
+
+        var presetHandsontable = {
+            edgesCount: '4',
+            lineWidthMultiplier: '100',
+            halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
+            shapeRendering: shapeRenderingOptions.indexOf('geometricPrecision'),
+            lineChaining: lineChainingOptions.indexOf('yes'),
+            pixelGridAlignment: pixelGridAlignmentOptions.indexOf('no')
+        }
+
+        function applyPreset(preset) {
+            var keys = Object.keys(preset);
+            for (var i = 0; i < keys.length; i++) {
+                var key = keys[i];
+                var elem = document.getElementById(key);
+                elem.value = preset[key];
+                elem.dispatchEvent(new Event("change"));
+            }
+        }
+
         document.querySelector('#reset-preset').addEventListener('click', function () {
             applyPreset(presetDefault);
         });
@@ -376,15 +377,7 @@
             applyPreset(presetHandsontable);
         });
 
-        function applyInputChange(elem) {
-            if ("createEvent" in document) {
-                var evt = document.createEvent("HTMLEvents");
-                evt.initEvent("change", false, true);
-                elem.dispatchEvent(evt);
-            }
-            else
-                elem.fireEvent("onchange");
-        }
+        applyPreset(presetDefault);
     </script>
 </body>
 
