@@ -56,7 +56,7 @@
             background-color: #fff;
         }
 
-        td.padded {
+        /*td.padded {
             padding: 1px;
         }
 
@@ -65,7 +65,7 @@
             display: flex;
             height: 100%;
             align-items: center;
-        }
+        }*/
 
         td:first-child {
             border-left-width: 1px;
@@ -112,6 +112,8 @@
     </div>
 
     <script>
+        var isBlinkEngine = window.navigator.userAgent.indexOf('Chrome/') > -1;
+
         var svg = document.querySelector('svg');
         var cell1 = document.querySelector('#cell1');
         var cell2 = document.querySelector('#cell2');
@@ -175,16 +177,17 @@
             return pixelGridAlignmentOptions[index];
         });
 
-        var dpr = window.devicePixelRatio;
-        document.querySelector('#devicePixelRatio').innerHTML = dpr;
+        var dpi = getBestDpiMeasurementForCurrentBrowser();
+        document.querySelector('#devicePixelRatio').innerHTML = dpi;
 
         setInterval(function () {
-            if (dpr !== window.devicePixelRatio) {
-                dpr = window.devicePixelRatio;
-                document.querySelector('#devicePixelRatio').innerHTML = dpr;
+            var newDpi = getBestDpiMeasurementForCurrentBrowser();
+            if (dpi !== newDpi) {
+                dpi = newDpi;
+                document.querySelector('#devicePixelRatio').innerHTML = newDpi;
                 render();
             }
-        }, 250);
+        }, 1000);
 
         var width = 500;
         var height = 80;
@@ -195,13 +198,16 @@
         svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
 
         function drawPathAroundElement(elem, width) {
+
+            width *= state.lineWidthMultiplier;
+
             var pixelGridAligmnentWidthMultiplier = 1;
 
             if (state.pixelGridAlignment === 'yes') {
                 pixelGridAligmnentWidthMultiplier = normalizeLineByDevicePixelRatio(pixelGridAligmnentWidthMultiplier);
             }
 
-            var correctedWidth = width * state.lineWidthMultiplier * pixelGridAligmnentWidthMultiplier;
+            var correctedWidth = width * pixelGridAligmnentWidthMultiplier;
             var rect = elem.getBoundingClientRect()
             var path = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('stroke', 'blue');
@@ -256,7 +262,6 @@
                 else {
                     command += 'M ' + line[0] + ' ' + line[1] + ' L ' + line[2] + ' ' + line[3] + ' ';
                 }
-
             }
 
             path.setAttribute('d', command);
@@ -271,11 +276,11 @@
         }
 
         function normalizePositionByDevicePixelRatio(num) {
-            return Math.round(num * devicePixelRatio) / devicePixelRatio;
+            return Math.round(num * dpi) / dpi;
         }
 
         function normalizeLineByDevicePixelRatio(num) {
-            return Math.floor(num * devicePixelRatio) / devicePixelRatio;
+            return Math.floor(num * dpi) / dpi;
         }
 
         function alignToPixelGrid(lines) {
@@ -296,7 +301,6 @@
         function widthAwareHalfPixelCorrection(lines, width, renderedWidth) {
             var newLines = new Array(lines.length);
             var halfPixel = (renderedWidth % 2) / 2;
-            // console.log('halfPixel', width, width % 2, renderedWidth, halfPixel);
             var needSubPixelCorrection = (width % 2 !== 0); // disable antialiasing
 
             for (var ii = 0; ii < lines.length; ii++) {
@@ -386,7 +390,7 @@
          */
 
         var presetDefault = {
-            edgesCount: '4',
+            edgesCount: '3', //0-3
             lineWidthMultiplier: '100',
             halfPixelCorrection: halfPixelCorrectionOptions.indexOf('widthAware'),
             shapeRendering: shapeRenderingOptions.indexOf('geometricPrecision'),
@@ -395,7 +399,7 @@
         }
 
         var presetHandsontable = {
-            edgesCount: '4',
+            edgesCount: '3', //0-3
             lineWidthMultiplier: '100',
             halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
             shapeRendering: shapeRenderingOptions.indexOf('geometricPrecision'),
@@ -423,6 +427,115 @@
         });
 
         applyPreset(presetDefault);
+
+
+        function mediaRatioString(val) {
+            // return `(min-resolution: ${val}dppx), (-webkit-min-device-pixel-ratio: ${val}),(-moz-min-device-pixel-ratio: ${val}),(min-device-pixel-ratio: ${val})`;
+            return `(-webkit-min-device-pixel-ratio: ${val}),(-moz-min-device-pixel-ratio: ${val}),(min-device-pixel-ratio: ${val})`;
+        }
+
+        function getRatioFromMedia() {
+            if (!window.matchMedia) {
+                return;
+            }
+
+            var tries = [];
+            for (var i = 10; i <= 60; i += 1) {
+                tries.push(i / 10);
+            }
+            for (var i = 1; i < 4; i += 1) {
+                tries.push(i + 0.3333333333);
+                tries.push(i + 0.6666666666);
+            }
+            for (var i = 1; i < 4; i += 1) {
+                tries.push(i + 0.25);
+                tries.push(i + 0.75);
+            }
+            tries.push(1.09);
+            tries.push(1.090909090909);
+            tries.sort();
+
+            var lastMatch = -1;
+            var start = 0;
+            var end = tries.length - 1;
+            for (var i = 1; i < 30; i++) {
+                var mid = start + (end - start) / 2;
+                var index = Math.floor(mid);
+                var ratioUnderTest = tries[index];
+                var isLastTry = end - start === 1;
+
+                var testResult = window.matchMedia(mediaRatioString(ratioUnderTest)).matches;
+                if (testResult) {
+                    lastMatch = ratioUnderTest;
+                    start = index;
+                }
+                else {
+                    end = index;
+                }
+
+                if (isLastTry) {
+                    break;
+                }
+            }
+
+            return lastMatch;
+        }
+
+        function measureDPI() {
+            return {
+                devicePixelRatio: window.devicePixelRatio,
+                windowOuterInnerRatio: window.outerWidth / window.innerWidth,
+                media: getRatioFromMedia()
+            };
+        }
+
+        function getBestDpiMeasurementForCurrentBrowser() {
+            // Tested in Firefox 72, Safari 13.0.5, Chrome 79
+
+            // Safari gives system DPI ratio
+            // Chrome gives system DPI ratio * zoom ratio
+            // Firefox gives system DPI ratio * zoom ratio
+            var dpr = window.devicePixelRatio;
+
+            // Safari gives zoom ratio
+            // Chrome gives zoom ratio
+            // Firefox gives 1
+            var windowOuterInnerRatio = window.outerWidth / window.innerWidth;
+            windowOuterInnerRatio = Math.round(windowOuterInnerRatio * 100) / 100; // round 1.7518248175182483 to 1.75 in Safari
+
+            /*
+            Example values
+                        DPI 100%        DPI 100%            DPI 200%
+                        Zoom 100%       Zoom 150%           Zoom 200%
+            Safari      dpr=1,woir=1    dpr=1,woir=1        dpr=2,woir=2
+            Chrome      dpr=1,woir=1    dpr=1.5,woir=1      dpr=4,woir=2
+            Firefox     dpr=1,woir=1    dpr=1.5,woir=1      dpr=4,woir=1
+            */
+
+            if (windowOuterInnerRatio === 1 && dpr === 1) {
+                return 1;
+            }
+
+            if (isBlinkEngine) {
+                return dpr;
+            }
+
+            if (windowOuterInnerRatio > 1) {
+                // Safari
+                return dpr * windowOuterInnerRatio;
+            }
+
+            //Firefox
+            return dpr;
+
+            // below is expensive, hopefully it will not be needed
+            // Safari gives 1
+            // Chrome gives zoom ratio
+            // Firefox gives zoom ratio
+            // return getRatioFromMedia();
+        }
+
+        console.log('measureDPI', measureDPI());
     </script>
 </body>
 
