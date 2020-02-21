@@ -6,4 +6,4 @@ Lab in which I try to find a way to draw pixel-aligned SVG, every time.
 
 ## Bonus
 
-[![Click to see on YouTube](https://img.youtube.com/vi/yyDUC1LUXSU/0.jpg)](https://www.youtube.com/watch?v=yyDUC1LUXSU)
+[![Click to see on YouTube](https://i.ytimg.com/vi_webp/yyDUC1LUXSU/maxresdefault.webp)](https://www.youtube.com/watch?v=yyDUC1LUXSU)
