@@ -103,7 +103,6 @@
         }
     </style>
 
-    <label><span>Number of edges</span><input id="edgesRange" type="range" min=0 max=3 value=3><output></output></label>
     <label><span>Device pixel ratio</span><output id="devicePixelRatio"></output></label>
     <div id="controls"></div>
 
@@ -148,6 +147,10 @@
             controls.appendChild(label);
         }
 
+        addControl('edgesCount', "Number of edges", 4, (index) => {
+            return (index + 1);
+        });
+
         addControl('lineWidthMultiplier', "Line width multiplier", 100, (index) => {
             return (index + 1) / 100;
         });
@@ -173,6 +176,7 @@
         });
 
         var presetDefault = {
+            edgesCount: '4',
             lineWidthMultiplier: '100',
             halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
             shapeRendering: shapeRenderingOptions.indexOf('crispEdges'),
@@ -181,6 +185,7 @@
         }
 
         var presetHandsontable = {
+            edgesCount: '4',
             lineWidthMultiplier: '100',
             halfPixelCorrection: halfPixelCorrectionOptions.indexOf('handsontable'),
             shapeRendering: shapeRenderingOptions.indexOf('geometricPrecision'),
@@ -200,8 +205,6 @@
 
         applyPreset(presetDefault);
 
-        var edges;
-
         var dpr = window.devicePixelRatio;
         document.querySelector('#devicePixelRatio').innerHTML = dpr;
 
@@ -211,21 +214,6 @@
                 document.querySelector('#devicePixelRatio').innerHTML = dpr;
             }
         }, 250);
-
-
-        function processEdgesRange(elem) {
-            edges = parseInt(elem.value, 10) + 1;
-            render();
-            elem.nextElementSibling.innerHTML = edges;
-        }
-
-        function registerRange(elem, callb) {
-            elem.addEventListener('input', function (ev) { callb(ev.target) });
-            elem.addEventListener('change', function (ev) { callb(ev.target) }); // IE9
-            callb(elem);
-        }
-
-        registerRange(document.querySelector('#edgesRange'), processEdgesRange);
 
         var width = 500;
         var height = 80;
@@ -255,7 +243,7 @@
                 [x1, y2, x1, y1],
             ];
 
-            lines.splice(edges);
+            lines.splice(state.edgesCount);
 
             if (state.pixelGridAlignment === 'yes') {
                 lines = alignToPixelGrid(lines);
@@ -375,20 +363,12 @@
         }
 
         document.querySelector('#reset-preset').addEventListener('click', function () {
-            document.querySelector('#edgesRange').setAttribute('value', '3');
-            applyInputChanges();
             applyPreset(presetDefault);
         });
 
         document.querySelector('#handsontable-preset').addEventListener('click', function () {
-            document.querySelector('#edgesRange').setAttribute('value', '3');
-            applyInputChanges();
             applyPreset(presetHandsontable);
         });
-
-        function applyInputChanges() {
-            applyInputChange(document.querySelector('#edgesRange'));
-        };
 
         function applyInputChange(elem) {
             if ("createEvent" in document) {
