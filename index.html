@@ -16,8 +16,12 @@
         <tr>
             <td>A2</td>
             <td id="cell1">B2</td>
-            <td>C2</td>
-            <td id="cell2">D2</td>
+            <td class="padded">
+                <div>C2</div>
+            </td>
+            <td class="padded" id="cell2">
+                <div>D2</div>
+            </td>
         </tr>
     </table>
 
@@ -50,6 +54,17 @@
             empty-cells: show;
             padding: 0 0.2ch 0 0.2ch;
             background-color: #fff;
+        }
+
+        td.padded {
+            padding: 1px;
+        }
+
+        td.padded div {
+            background: #bbb;
+            display: flex;
+            height: 100%;
+            align-items: center;
         }
 
         td:first-child {
@@ -95,6 +110,8 @@
     <label><span>Shape rendering</span><input id="shapeRendering" type="range" min=0 max=2
             value=2><output></output></label>
     <label><span>Line chaining</span><input id="lineChaining" type="range" min=0 max=1 value=0><output></output></label>
+    <label><span>Align to pixel grid</span><input id="alignPixelGrid" type="range" min=0 max=1
+            value=0><output></output></label>
     <label><span>Device pixel ratio</span><output id="devicePixelRatio"></output></label>
 
     <div>
@@ -111,6 +128,7 @@
         var halfPixelCorrection;
         var shapeRendering;
         var lineChaining;
+        var alignPixelGrid;
 
         var dpr = window.devicePixelRatio;
         document.querySelector('#devicePixelRatio').innerHTML = dpr;
@@ -180,6 +198,19 @@
             elem.nextElementSibling.innerHTML = lineChaining;
         }
 
+        function processAlignPixelGrid(elem) {
+            switch (elem.value) {
+                case '1':
+                    alignPixelGrid = true;
+                    break;
+                case '0':
+                    alignPixelGrid = false;
+                    break;
+            }
+            render();
+            elem.nextElementSibling.innerHTML = alignPixelGrid;
+        }
+
         function registerRange(elem, callb) {
             elem.addEventListener('input', function (ev) { callb(ev.target) });
             elem.addEventListener('change', function (ev) { callb(ev.target) }); // IE9
@@ -191,6 +222,7 @@
         registerRange(document.querySelector('#halfPixelRange'), processHalfPixelRange);
         registerRange(document.querySelector('#shapeRendering'), processShapeRenderingRange);
         registerRange(document.querySelector('#lineChaining'), processLineChainingRange);
+        registerRange(document.querySelector('#alignPixelGrid'), processAlignPixelGrid);
 
         var width = 500;
         var height = 80;
@@ -222,7 +254,14 @@
 
             lines.splice(edges);
 
-            if (halfPixelCorrection === 'handsontable') {
+            if (alignPixelGrid) {
+                lines = alignToPixelGrid(lines);
+            }
+
+            if (halfPixelCorrection === 'pixelgrid') {
+                lines = pixelgridHalfPixelCorrection(lines, width);
+            }
+            else if (halfPixelCorrection === 'handsontable') {
                 lines = handsontableHalfPixelCorrection(lines, width);
             }
             else if (halfPixelCorrection === 'simple') {
@@ -257,6 +296,25 @@
             drawPathAroundElement(cell2, 2);
         }
         render();
+
+        function alignToPixelGrid(lines) {
+            var newLines = new Array(lines.length);
+
+            function calc(num) {
+                return Math.round(num * devicePixelRatio) / devicePixelRatio;
+            }
+
+            for (var ii = 0; ii < lines.length; ii++) {
+                var x1 = calc(lines[ii][0]);
+                var y1 = calc(lines[ii][1]);
+                var x2 = calc(lines[ii][2]);
+                var y2 = calc(lines[ii][3]);
+
+                newLines[ii] = [x1, y1, x2, y2];
+            }
+
+            return newLines;
+        }
 
         function handsontableHalfPixelCorrection(lines, width) {
             var newLines = new Array(lines.length);
@@ -314,7 +372,7 @@
             while (child = element.lastChild) {
                 element.removeChild(child);
             }
-        }        
+        }
 
         document.querySelector('#reset-preset').addEventListener('click', function () {
             document.querySelector('#edgesRange').setAttribute('value', '3');
@@ -322,6 +380,7 @@
             document.querySelector('#halfPixelRange').setAttribute('value', '2');
             document.querySelector('#shapeRendering').setAttribute('value', '2');
             document.querySelector('#lineChaining').setAttribute('value', '0');
+            document.querySelector('#alignPixelGrid').setAttribute('value', '0');
             applyInputChanges();
         });
 
@@ -331,6 +390,7 @@
             document.querySelector('#halfPixelRange').setAttribute('value', '2');
             document.querySelector('#shapeRendering').setAttribute('value', '1');
             document.querySelector('#lineChaining').setAttribute('value', '1');
+            document.querySelector('#alignPixelGrid').setAttribute('value', '0');
             applyInputChanges();
         });
 
@@ -340,6 +400,7 @@
             applyInputChange(document.querySelector('#halfPixelRange'));
             applyInputChange(document.querySelector('#shapeRendering'));
             applyInputChange(document.querySelector('#lineChaining'));
+            applyInputChange(document.querySelector('#alignPixelGrid'));
         };
 
         function applyInputChange(elem) {
