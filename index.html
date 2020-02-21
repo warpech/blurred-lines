@@ -8,7 +8,7 @@
 <body>
     <table>
         <tr>
-            <td>A1</td>
+            <td id="cell0">A1</td>
             <td>B1</td>
             <td>C1</td>
             <td>D1</td>
@@ -154,6 +154,7 @@
         });
 
         addControl('lineWidthMultiplier', "Line width multiplier", 100, (index) => {
+            console.log('lineWidthMultiplier,', index);
             return (index + 1) / 100;
         });
 
@@ -197,8 +198,7 @@
         svg.setAttribute('height', height);
         svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
 
-        function drawPathAroundElement(elem, width) {
-
+        function drawPathAroundElement(elem1, elem2, width, color, dashed) {
             width *= state.lineWidthMultiplier;
 
             var pixelGridAligmnentWidthMultiplier = 1;
@@ -208,17 +208,24 @@
             }
 
             var correctedWidth = width * pixelGridAligmnentWidthMultiplier;
-            var rect = elem.getBoundingClientRect()
+            var rect1 = elem1.getBoundingClientRect()
+            var rect2 = elem2.getBoundingClientRect()
             var path = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('stroke', 'blue');
+            path.setAttribute('stroke', color);
             path.setAttribute('stroke-width', correctedWidth);
-            path.setAttribute('stroke-dasharray', 4);
+            if (dashed) {
+                path.setAttribute('stroke-dasharray', 4);
+            }
             path.setAttribute('shape-rendering', state.shapeRendering);
 
-            var x1 = rect.left;
-            var y1 = rect.top;
-            var x2 = x1 + rect.width - (correctedWidth - pixelGridAligmnentWidthMultiplier);
-            var y2 = y1 + rect.height - (correctedWidth - pixelGridAligmnentWidthMultiplier);
+            var x1 = rect1.left;
+            var y1 = rect1.top;
+            if (elem1 !== elem2) {
+                x1 += 1;
+                y1 += 1;
+            }
+            var x2 = rect2.left + rect2.width - (correctedWidth - pixelGridAligmnentWidthMultiplier);
+            var y2 = rect2.top + rect2.height - (correctedWidth - pixelGridAligmnentWidthMultiplier);
 
             var lines = [
                 [x1, y1, x2, y1],
@@ -271,8 +278,9 @@
 
         function render() {
             empty(this.svg);
-            drawPathAroundElement(cell1, 1);
-            drawPathAroundElement(cell2, 2);
+            drawPathAroundElement(cell0, cell1, 1, 'black', false);
+            drawPathAroundElement(cell1, cell1, 1, 'rgb(75, 137, 255)', true);
+            drawPathAroundElement(cell2, cell2, 2, 'rgb(75, 137, 255)', true);
         }
 
         function normalizePositionByDevicePixelRatio(num) {
@@ -408,7 +416,7 @@
         }
 
         function applyPreset(preset) {
-            state = preset;
+            state = JSON.parse(JSON.stringify(preset));
             var keys = Object.keys(preset);
             for (var i = 0; i < keys.length; i++) {
                 var key = keys[i];
