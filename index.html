@@ -224,10 +224,16 @@
         svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
 
         function drawPathAroundElement(elem, width) {
+            var pixelGridAligmnentWidthMultiplier = 1;
+
+            if (state.pixelGridAlignment === 'yes') {
+                pixelGridAligmnentWidthMultiplier = normalizeByDevicePixelRatio(pixelGridAligmnentWidthMultiplier);
+            }
+
             var rect = elem.getBoundingClientRect()
             var path = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('stroke', 'blue');
-            path.setAttribute('stroke-width', width * state.lineWidthMultiplier);
+            path.setAttribute('stroke-width', width * state.lineWidthMultiplier * pixelGridAligmnentWidthMultiplier);
             path.setAttribute('stroke-dasharray', 4);
             path.setAttribute('shape-rendering', state.shapeRendering);
 
@@ -285,18 +291,18 @@
         }
         render();
 
+        function normalizeByDevicePixelRatio(num) {
+            return Math.round(num * devicePixelRatio) / devicePixelRatio;
+        }
+
         function alignToPixelGrid(lines) {
             var newLines = new Array(lines.length);
 
-            function calc(num) {
-                return Math.round(num * devicePixelRatio) / devicePixelRatio;
-            }
-
             for (var ii = 0; ii < lines.length; ii++) {
-                var x1 = calc(lines[ii][0]);
-                var y1 = calc(lines[ii][1]);
-                var x2 = calc(lines[ii][2]);
-                var y2 = calc(lines[ii][3]);
+                var x1 = normalizeByDevicePixelRatio(lines[ii][0]);
+                var y1 = normalizeByDevicePixelRatio(lines[ii][1]);
+                var x2 = normalizeByDevicePixelRatio(lines[ii][2]);
+                var y2 = normalizeByDevicePixelRatio(lines[ii][3]);
 
                 newLines[ii] = [x1, y1, x2, y2];
             }
