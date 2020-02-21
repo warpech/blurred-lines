@@ -110,9 +110,8 @@
     <label><span>Shape rendering</span><input id="shapeRendering" type="range" min=0 max=2
             value=2><output></output></label>
     <label><span>Line chaining</span><input id="lineChaining" type="range" min=0 max=1 value=0><output></output></label>
-    <label><span>Align to pixel grid</span><input id="alignPixelGrid" type="range" min=0 max=1
-            value=0><output></output></label>
     <label><span>Device pixel ratio</span><output id="devicePixelRatio"></output></label>
+    <div id="controls"></div>
 
     <div>
         <button id="reset-preset">Reset</button>
@@ -123,12 +122,69 @@
         var svg = document.querySelector('svg');
         var cell1 = document.querySelector('#cell1');
         var cell2 = document.querySelector('#cell2');
+        var controls = document.querySelector('#controls');
+        var state = {};
+
+        function updateState(elem, name, callb, output) {
+            var index = parseInt(elem.value, 10);
+            console.log('index', index, callb(index));
+            state[name] = callb(index);
+            output.innerHTML = state[name];
+            render();
+        }
+
+        function addControl(name, labelText, range, callb) {
+            var output = document.createElement('output');
+
+            var input = document.createElement('input');
+            input.setAttribute('id', name);
+            input.setAttribute('type', 'range');
+            input.setAttribute('min', '0');
+            input.setAttribute('max', '' + (range - 1));
+            input.addEventListener('input', function (ev) { updateState(ev.target, name, callb, output) });
+            input.addEventListener('change', function (ev) { updateState(ev.target, name, callb, output) }); // IE9
+
+            var span = document.createElement('span');
+            span.innerHTML = labelText;
+
+            var label = document.createElement('label');
+            label.appendChild(span);
+            label.appendChild(input);
+            label.appendChild(output);
+
+            controls.appendChild(label);
+        }
+
+        var pixelGridAlignmentOptions = ['no', 'yes'];
+        addControl('pixelGridAlignment', "Align to pixel grid", 2, (index) => {
+            return pixelGridAlignmentOptions[index];
+        });
+
+        var presetDefault = {
+            pixelGridAlignment: pixelGridAlignmentOptions.indexOf('yes')
+        }
+
+        var presetHandsontable = {
+            pixelGridAlignment: pixelGridAlignmentOptions.indexOf('no')
+        }
+
+        function applyPreset(preset) {
+            var keys = Object.keys(preset);
+            for (var i = 0; i < keys.length; i++) {
+                var key = keys[i];
+                var elem = document.getElementById(key);
+                elem.value = preset[key];
+                elem.dispatchEvent(new Event("change"));
+            }
+        }
+
+        applyPreset(presetDefault);
+
         var edges;
         var multiplier;
         var halfPixelCorrection;
         var shapeRendering;
         var lineChaining;
-        var alignPixelGrid;
 
         var dpr = window.devicePixelRatio;
         document.querySelector('#devicePixelRatio').innerHTML = dpr;
@@ -222,7 +278,6 @@
         registerRange(document.querySelector('#halfPixelRange'), processHalfPixelRange);
         registerRange(document.querySelector('#shapeRendering'), processShapeRenderingRange);
         registerRange(document.querySelector('#lineChaining'), processLineChainingRange);
-        registerRange(document.querySelector('#alignPixelGrid'), processAlignPixelGrid);
 
         var width = 500;
         var height = 80;
@@ -254,7 +309,7 @@
 
             lines.splice(edges);
 
-            if (alignPixelGrid) {
+            if (state.pixelGridAlignment === 'yes') {
                 lines = alignToPixelGrid(lines);
             }
 
@@ -380,8 +435,8 @@
             document.querySelector('#halfPixelRange').setAttribute('value', '2');
             document.querySelector('#shapeRendering').setAttribute('value', '2');
             document.querySelector('#lineChaining').setAttribute('value', '0');
-            document.querySelector('#alignPixelGrid').setAttribute('value', '0');
             applyInputChanges();
+            applyPreset(presetDefault);
         });
 
         document.querySelector('#handsontable-preset').addEventListener('click', function () {
@@ -390,8 +445,8 @@
             document.querySelector('#halfPixelRange').setAttribute('value', '2');
             document.querySelector('#shapeRendering').setAttribute('value', '1');
             document.querySelector('#lineChaining').setAttribute('value', '1');
-            document.querySelector('#alignPixelGrid').setAttribute('value', '0');
             applyInputChanges();
+            applyPreset(presetHandsontable);
         });
 
         function applyInputChanges() {
@@ -400,7 +455,6 @@
             applyInputChange(document.querySelector('#halfPixelRange'));
             applyInputChange(document.querySelector('#shapeRendering'));
             applyInputChange(document.querySelector('#lineChaining'));
-            applyInputChange(document.querySelector('#alignPixelGrid'));
         };
 
         function applyInputChange(elem) {
